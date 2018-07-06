@@ -1,11 +1,27 @@
-FROM  python:3
+FROM python:3.6-alpine
 
-WORKDIR /webapp
+RUN adduser -D microblog
 
-ADD . /webapp
+WORKDIR /home/microblog
 
-RUN pip install --trusted-host pypi.python.org -r requirements.txt
+COPY requirements.txt requirements.txt
+RUN python -m venv venv
+RUN apk update
+RUN apk add unixodbc unixodbc-dev freetds-dev g++
+ENV CFLAGS=-Qunused-arguments
+ENV CPPFLAGS=-Qunused-arguments
+RUN venv/bin/pip install -r requirements.txt
+#RUN venv/bin/pip install gunicorn pymysql
 
-CMD exports FLASK_APP=microblog.py
+COPY app app
+COPY migrations migrations
+COPY microblog.py config.py boot.sh ./
+RUN chmod a+x boot.sh
 
-CMD flask run
+ENV FLASK_APP microblog.py
+
+RUN chown -R microblog:microblog ./
+USER microblog
+
+EXPOSE 5000
+ENTRYPOINT ["./boot.sh"]
